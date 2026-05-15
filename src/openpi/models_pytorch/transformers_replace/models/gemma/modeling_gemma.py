@@ -502,9 +502,11 @@ class GemmaModel(GemmaPreTrainedModel):
 
         # embed positions
         hidden_states = inputs_embeds
-        # Convert to bfloat16 if the first layer uses bfloat16
-        if len(self.layers) > 0 and self.layers[0].self_attn.q_proj.weight.dtype == torch.bfloat16:
-            hidden_states = hidden_states.to(torch.bfloat16)
+        # Convert to the decoder dtype when it uses half precision.
+        if len(self.layers) > 0:
+            decoder_dtype = self.layers[0].self_attn.q_proj.weight.dtype
+            if decoder_dtype in (torch.bfloat16, torch.float16):
+                hidden_states = hidden_states.to(decoder_dtype)
 
         # create position embeddings to be shared across the decoder layers
         position_embeddings = self.rotary_emb(hidden_states, position_ids)

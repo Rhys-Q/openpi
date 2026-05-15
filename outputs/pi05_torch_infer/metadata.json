@@ -1,0 +1,30 @@
+{
+  "ckpt": "/root/autodl-tmp/tools/pi05-pytorch-base",
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 4090",
+  "device": "cuda",
+  "model_config": {
+    "action_dim": 32,
+    "action_expert_variant": "gemma_300m",
+    "action_horizon": 50,
+    "discrete_state_input": true,
+    "dtype": "bfloat16",
+    "max_token_len": 200,
+    "paligemma_variant": "gemma_2b",
+    "pi05": true,
+    "pytorch_compile_mode": null
+  },
+  "num_examples": 10,
+  "num_steps": 10,
+  "precisions": [
+    "bfloat16",
+    "float16"
+  ],
+  "seed": 20260515,
+  "timing_sec": {
+    "bf16": 150.1117590405047,
+    "fp16": 131.82876939885318
+  },
+  "tokenizer_model": "outputs/pi05_torch_infer/tokenizer.model",
+  "torch": "2.7.1+cu126"
+}

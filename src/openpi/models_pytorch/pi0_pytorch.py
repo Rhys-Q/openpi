@@ -10,6 +10,8 @@ import openpi.models.gemma as _gemma
 from openpi.models_pytorch.gemma_pytorch import PaliGemmaWithExpertModel
 import openpi.models_pytorch.preprocessing_pytorch as _preprocessing
 
+_HALF_PRECISION_DTYPES = (torch.bfloat16, torch.float16)
+
 
 def get_safe_dtype(target_dtype, device_type):
     """Get a safe dtype for the given device type."""
@@ -20,6 +22,10 @@ def get_safe_dtype(target_dtype, device_type):
         if target_dtype == torch.float64:
             return torch.float64
     return target_dtype
+
+
+def _is_half_precision(dtype: torch.dtype) -> bool:
+    return dtype in _HALF_PRECISION_DTYPES
 
 
 def create_sinusoidal_pos_embedding(
@@ -330,12 +336,10 @@ class PI0Pytorch(nn.Module):
 
         prefix_embs, prefix_pad_masks, prefix_att_masks = self.embed_prefix(images, img_masks, lang_tokens, lang_masks)
         suffix_embs, suffix_pad_masks, suffix_att_masks, adarms_cond = self.embed_suffix(state, x_t, time)
-        if (
-            self.paligemma_with_expert.paligemma.language_model.layers[0].self_attn.q_proj.weight.dtype
-            == torch.bfloat16
-        ):
-            suffix_embs = suffix_embs.to(dtype=torch.bfloat16)
-            prefix_embs = prefix_embs.to(dtype=torch.bfloat16)
+        prefix_dtype = self.paligemma_with_expert.paligemma.language_model.layers[0].self_attn.q_proj.weight.dtype
+        if _is_half_precision(prefix_dtype):
+            suffix_embs = suffix_embs.to(dtype=prefix_dtype)
+            prefix_embs = prefix_embs.to(dtype=prefix_dtype)
 
         pad_masks = torch.cat([prefix_pad_masks, suffix_pad_masks], dim=1)
         att_masks = torch.cat([prefix_att_masks, suffix_att_masks], dim=1)
