@@ -15,6 +15,7 @@ import jax
 import numpy as np
 import safetensors.torch
 import torch
+from transformers.modeling_utils import no_init_weights
 
 from openpi import transforms
 from openpi.models import model as _model
@@ -82,8 +83,17 @@ def _make_transform(model_config: pi0_config.Pi0Config) -> transforms.DataTransf
 
 def _make_model(ckpt_dir: pathlib.Path, precision: str, device: torch.device) -> pi0_pytorch.PI0Pytorch:
     model_config = pi0_config.Pi0Config(pi05=True, dtype=precision, pytorch_compile_mode=None)
-    model = pi0_pytorch.PI0Pytorch(model_config)
-    safetensors.torch.load_model(model, ckpt_dir / "model.safetensors")
+    if device.type == "cpu":
+        with no_init_weights():
+            model = pi0_pytorch.PI0Pytorch(model_config)
+    else:
+        with torch.device(device), no_init_weights():
+            model = pi0_pytorch.PI0Pytorch(model_config)
+
+    # The safetensors checkpoint omits the PaliGemma language embedding because it is tied to lm_head.
+    # no_init_weights leaves that tie unset, so restore it before strict loading.
+    model.paligemma_with_expert.paligemma.tie_weights()
+    safetensors.torch.load_model(model, ckpt_dir / "model.safetensors", device=str(device))
     model.paligemma_with_expert.to_bfloat16_for_selected_params(precision)
     return model.to(device).eval()
 
